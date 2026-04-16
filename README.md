@@ -26,7 +26,7 @@
 
 **ArtLens** detects AI-generated images, identifies the generator, flags unknown models, and explains every decision with visual heatmaps — all free and open source.
 
-[**Live Demo →**](https://artlens.vercel.app) · [**API Docs →**](https://YOUR_USERNAME-artlens.hf.space/docs) · [**Model Weights →**](https://huggingface.co/YOUR_USERNAME/artlens)
+[**Live Demo →**](https://artlens-beta.vercel.app/) · [**API Docs →**](https://rishigupta04-artlens.hf.space/docs) · [**Model Weights →**](https://huggingface.co/rishigupta04/ArtLens/)
 
 <br/>
 
