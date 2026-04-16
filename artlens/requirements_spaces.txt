@@ -1,0 +1,17 @@
+fastapi==0.115.0
+uvicorn==0.30.6
+python-multipart==0.0.9
+pydantic==2.7.4
+torch==2.5.1
+torchvision==0.20.1
+timm==0.9.16
+albumentations==1.4.3
+opencv-python-headless==4.9.0.80
+PyWavelets==1.6.0
+scikit-image==0.24.0
+lightgbm==4.5.0
+scikit-learn==1.4.2
+joblib==1.4.2
+numpy==1.26.4
+Pillow==10.2.0
+huggingface_hub==0.24.0

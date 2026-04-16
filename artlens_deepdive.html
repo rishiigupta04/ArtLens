@@ -1,0 +1,1096 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ArtLens — Deep Dive</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@400;500&family=Instrument+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink: #1a1814;
+    --ink2: #3d3a35;
+    --ink3: #7a756e;
+    --paper: #faf8f4;
+    --paper2: #f2ede6;
+    --paper3: #e8e0d4;
+    --accent: #c84b2f;
+    --accent2: #e8742a;
+    --blue: #2a5fa5;
+    --green: #2d7a4f;
+    --teal: #1d6b6b;
+    --border: #d8d0c4;
+    --mono: 'DM Mono', monospace;
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Instrument Sans', system-ui, sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.7;
+    font-size: 16px;
+  }
+
+  /* ── Nav ── */
+  nav {
+    position: fixed; top: 0; left: 0; right: 0;
+    background: var(--paper);
+    border-bottom: 1px solid var(--border);
+    z-index: 100;
+    padding: 0 2rem;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 52px;
+  }
+  .nav-logo {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 500;
+    color: var(--ink);
+    text-decoration: none;
+  }
+  .nav-logo span { color: var(--accent); font-style: italic; }
+  .nav-links {
+    display: flex; gap: 0; list-style: none;
+  }
+  .nav-links a {
+    font-size: 13px;
+    color: var(--ink3);
+    text-decoration: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: color .15s, background .15s;
+  }
+  .nav-links a:hover { color: var(--ink); background: var(--paper2); }
+
+  /* ── Layout ── */
+  .page { max-width: 860px; margin: 0 auto; padding: 80px 2rem 4rem; }
+
+  /* ── Hero ── */
+  .hero {
+    padding: 3rem 0 2.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 3rem;
+  }
+  .hero-tag {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+  .hero h1 {
+    font-family: var(--serif);
+    font-size: clamp(32px, 5vw, 52px);
+    font-weight: 300;
+    line-height: 1.15;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+  }
+  .hero h1 em { color: var(--accent); font-style: italic; }
+  .hero-sub {
+    font-size: 17px;
+    color: var(--ink2);
+    max-width: 640px;
+    line-height: 1.65;
+  }
+  .pill-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 1.5rem; }
+  .pill {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid;
+  }
+  .pill-red   { border-color: var(--accent);  color: var(--accent);  background: #fdf0ed; }
+  .pill-blue  { border-color: var(--blue);    color: var(--blue);    background: #eef3fb; }
+  .pill-green { border-color: var(--green);   color: var(--green);   background: #eef7f2; }
+  .pill-teal  { border-color: var(--teal);    color: var(--teal);    background: #edf6f6; }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.5rem 1.75rem;
+    margin-bottom: 3rem;
+  }
+  .toc h3 {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    margin-bottom: 1rem;
+  }
+  .toc ol { padding-left: 1.25rem; }
+  .toc li { margin-bottom: 6px; }
+  .toc a { color: var(--blue); text-decoration: none; font-size: 14px; }
+  .toc a:hover { text-decoration: underline; }
+
+  /* ── Sections ── */
+  .section { margin-bottom: 4rem; }
+  .section-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--accent);
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    margin-bottom: .5rem;
+  }
+  .section h2 {
+    font-family: var(--serif);
+    font-size: 28px;
+    font-weight: 400;
+    color: var(--ink);
+    margin-bottom: 1.25rem;
+    line-height: 1.25;
+  }
+  .section h3 {
+    font-family: var(--serif);
+    font-size: 20px;
+    font-weight: 400;
+    color: var(--ink);
+    margin: 1.75rem 0 .75rem;
+  }
+  .section p { color: var(--ink2); margin-bottom: 1rem; font-size: 15.5px; }
+  .section ul, .section ol {
+    padding-left: 1.5rem;
+    color: var(--ink2);
+    margin-bottom: 1rem;
+    font-size: 15.5px;
+  }
+  .section li { margin-bottom: 6px; }
+
+  /* ── Divider ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3rem 0;
+  }
+
+  /* ── Concept cards ── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 12px;
+    margin: 1.5rem 0;
+  }
+  .card {
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem;
+  }
+  .card-icon {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink3);
+    margin-bottom: .5rem;
+  }
+  .card h4 {
+    font-family: var(--serif);
+    font-size: 17px;
+    font-weight: 400;
+    margin-bottom: .5rem;
+    color: var(--ink);
+  }
+  .card p { font-size: 14px; color: var(--ink2); margin: 0; }
+  .card.accent-red   { border-left: 3px solid var(--accent); }
+  .card.accent-blue  { border-left: 3px solid var(--blue); }
+  .card.accent-green { border-left: 3px solid var(--green); }
+  .card.accent-teal  { border-left: 3px solid var(--teal); }
+
+  /* ── Highlight boxes ── */
+  .callout {
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    font-size: 14.5px;
+  }
+  .callout-insight {
+    background: #fff8e6;
+    border-left: 3px solid var(--accent2);
+    color: #5a3e10;
+  }
+  .callout-insight strong { color: #7a4a08; }
+  .callout-paper {
+    background: #eef3fb;
+    border-left: 3px solid var(--blue);
+    color: #1a3560;
+  }
+  .callout-paper strong { color: #1a3560; }
+  .callout-code {
+    background: #f0f0eb;
+    border-left: 3px solid var(--ink3);
+    color: var(--ink2);
+  }
+
+  /* ── Code ── */
+  code {
+    font-family: var(--mono);
+    font-size: 13px;
+    background: var(--paper3);
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--ink);
+  }
+  pre {
+    background: #1e1c18;
+    color: #e8e0d0;
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    overflow-x: auto;
+    font-family: var(--mono);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 1.25rem 0;
+  }
+  pre .cm { color: #6a7a5a; }
+  pre .kw { color: #e08a50; }
+  pre .st { color: #7ab87a; }
+  pre .nm { color: #8ab4d8; }
+  pre .fn { color: #d4a870; }
+
+  /* ── Architecture diagram ── */
+  .arch-diagram {
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2rem;
+    margin: 1.5rem 0;
+    overflow-x: auto;
+  }
+  .arch-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .arch-box {
+    border: 1.5px solid;
+    border-radius: 6px;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-family: var(--mono);
+    text-align: center;
+    min-width: 120px;
+  }
+  .arch-box.red   { border-color: var(--accent);  background: #fdf0ed; color: var(--accent); }
+  .arch-box.blue  { border-color: var(--blue);    background: #eef3fb; color: var(--blue); }
+  .arch-box.green { border-color: var(--green);   background: #eef7f2; color: var(--green); }
+  .arch-box.teal  { border-color: var(--teal);    background: #edf6f6; color: var(--teal); }
+  .arch-box.gray  { border-color: var(--border);  background: var(--paper3); color: var(--ink2); }
+  .arch-arrow { color: var(--ink3); font-size: 18px; }
+  .arch-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink3);
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  /* ── Phase timeline ── */
+  .timeline { margin: 1.5rem 0; }
+  .tl-item {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    position: relative;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: 17px; top: 36px;
+    width: 1px; height: calc(100% + 4px);
+    background: var(--border);
+  }
+  .tl-item:last-child::before { display: none; }
+  .tl-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    border: 2px solid;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 500;
+    flex-shrink: 0;
+  }
+  .tl-dot.done   { border-color: var(--green); background: #eef7f2; color: var(--green); }
+  .tl-dot.active { border-color: var(--accent); background: #fdf0ed; color: var(--accent); }
+  .tl-dot.todo   { border-color: var(--border); background: var(--paper2); color: var(--ink3); }
+  .tl-body { padding-top: 6px; }
+  .tl-title { font-size: 15px; font-weight: 500; color: var(--ink); margin-bottom: 3px; }
+  .tl-desc  { font-size: 13.5px; color: var(--ink3); }
+
+  /* ── Paper cards ── */
+  .paper-card {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 12px;
+    background: var(--paper);
+  }
+  .paper-badge {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 3px 8px;
+    border-radius: 20px;
+    margin-right: 6px;
+    background: #eef3fb;
+    color: var(--blue);
+    border: 1px solid #b5d0f0;
+  }
+  .paper-title { font-size: 15px; font-weight: 500; color: var(--ink); margin: 8px 0 4px; }
+  .paper-desc  { font-size: 14px; color: var(--ink2); margin-bottom: 6px; }
+  .paper-borrow { font-size: 13px; color: var(--green); font-style: italic; }
+
+  /* ── Stack table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    margin: 1.25rem 0;
+  }
+  th {
+    text-align: left;
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--ink3);
+    padding: 8px 12px;
+    border-bottom: 2px solid var(--border);
+  }
+  td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    color: var(--ink2);
+    vertical-align: top;
+  }
+  td:first-child { color: var(--ink); font-weight: 500; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: var(--paper2); }
+
+  /* ── Analogy blocks ── */
+  .analogy {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 1.25rem 0;
+  }
+  .analogy-side {
+    background: var(--paper2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 1rem 1.25rem;
+  }
+  .analogy-side .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    margin-bottom: .5rem;
+  }
+  .analogy-side.real .label { color: var(--green); }
+  .analogy-side.ai   .label { color: var(--accent); }
+  .analogy-side p { font-size: 14px; color: var(--ink2); margin: 0; }
+
+  /* ── Scroll progress ── */
+  .progress-bar {
+    position: fixed;
+    top: 52px; left: 0;
+    height: 2px;
+    background: var(--accent);
+    z-index: 99;
+    transition: width .1s;
+  }
+
+  /* ── Back to top ── */
+  .back-top {
+    display: block;
+    text-align: center;
+    margin: 2rem 0;
+    color: var(--ink3);
+    font-size: 13px;
+    text-decoration: none;
+  }
+  .back-top:hover { color: var(--accent); }
+
+  @media (max-width: 600px) {
+    nav { padding: 0 1rem; }
+    .nav-links { display: none; }
+    .page { padding: 70px 1rem 3rem; }
+    .analogy { grid-template-columns: 1fr; }
+    .arch-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="prog"></div>
+
+<nav>
+  <a href="#" class="nav-logo">Art<span>Lens</span></a>
+  <ul class="nav-links">
+    <li><a href="#problem">Problem</a></li>
+    <li><a href="#images">Images & DL</a></li>
+    <li><a href="#model">Model</a></li>
+    <li><a href="#dataset">Dataset</a></li>
+    <li><a href="#training">Training</a></li>
+    <li><a href="#explain">Explainability</a></li>
+    <li><a href="#papers">Papers</a></li>
+    <li><a href="#deploy">Deploy</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-tag">ArtLens — Full Technical Deep Dive</div>
+    <h1>Understanding every decision<br>in the <em>ArtLens</em> project</h1>
+    <p class="hero-sub">A beginner-friendly, comprehensive explanation of the concepts, methods, architecture, and research behind building an AI art detection system — from raw images to deployed product.</p>
+    <div class="pill-row">
+      <span class="pill pill-red">Deep Learning</span>
+      <span class="pill pill-blue">Vision Transformer</span>
+      <span class="pill pill-green">Image Classification</span>
+      <span class="pill pill-teal">ML Deployment</span>
+      <span class="pill pill-red">Open-Set Detection</span>
+      <span class="pill pill-blue">Explainability</span>
+    </div>
+  </div>
+
+  <!-- TOC -->
+  <div class="toc">
+    <h3>Contents</h3>
+    <ol>
+      <li><a href="#problem">The problem we're solving</a></li>
+      <li><a href="#images">How computers see images</a></li>
+      <li><a href="#dl-basics">Deep learning basics</a></li>
+      <li><a href="#cnn-vs-vit">CNNs vs Vision Transformers</a></li>
+      <li><a href="#model">ArtLens model architecture</a></li>
+      <li><a href="#dataset">Dataset design</a></li>
+      <li><a href="#training">Training: what actually happens</a></li>
+      <li><a href="#explain">Explainability methods</a></li>
+      <li><a href="#papers">The 5 research papers</a></li>
+      <li><a href="#deploy">Deployment stack</a></li>
+      <li><a href="#phases">Build phases</a></li>
+    </ol>
+  </div>
+
+
+  <!-- Section 1: Problem -->
+  <div class="section" id="problem">
+    <div class="section-num">01 — The problem</div>
+    <h2>What are we actually building, and why?</h2>
+
+    <p>AI image generators — Midjourney, Stable Diffusion, DALL-E 3 — can now produce artwork that looks indistinguishable from human-made art. This creates real problems:</p>
+
+    <div class="card-grid">
+      <div class="card accent-red">
+        <div class="card-icon">ARTIST COMMUNITIES</div>
+        <h4>Contest fraud</h4>
+        <p>AI art submitted to human-only contests on ArtStation and DeviantArt. Artists lose to machines they didn't know they were competing against.</p>
+      </div>
+      <div class="card accent-blue">
+        <div class="card-icon">STOCK PLATFORMS</div>
+        <h4>Licensing issues</h4>
+        <p>Getty, Shutterstock need to flag AI submissions. Selling AI art under "human-created" licenses is legally and ethically problematic.</p>
+      </div>
+      <div class="card accent-green">
+        <div class="card-icon">ART SCHOOLS</div>
+        <h4>Academic integrity</h4>
+        <p>Students submitting AI art as their own original work. Instructors can't tell by eye anymore.</p>
+      </div>
+      <div class="card accent-teal">
+        <div class="card-icon">JOURNALISM</div>
+        <h4>Misinformation</h4>
+        <p>AI-generated images used to fake events, protests, disasters. Fact-checkers need detection tools.</p>
+      </div>
+    </div>
+
+    <p>Existing tools like <strong>Hive Moderation</strong> and <strong>AI or Not</strong> exist but are paywalled and black-box — they give you a verdict but no explanation. ArtLens is different:</p>
+
+    <div class="callout callout-insight">
+      <strong>ArtLens goal:</strong> Free, explainable, multi-generator detection. Not just "AI or not" — but <em>which generator</em>, <em>why the model thinks so</em>, and <em>how confident it is</em>. Including flagging images from generators it has never seen before.
+    </div>
+
+    <h3>The three questions ArtLens answers</h3>
+    <ol>
+      <li><strong>Is this AI-generated or human-made?</strong> — Binary classification (Head 1)</li>
+      <li><strong>Which generator made it?</strong> — Generator fingerprinting (Head 2): Midjourney vs Stable Diffusion</li>
+      <li><strong>Is this from a generator I've never seen?</strong> — Open-set detection (Head 3): flags unknown future generators</li>
+    </ol>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 2: How computers see images -->
+  <div class="section" id="images">
+    <div class="section-num">02 — Foundations</div>
+    <h2>How computers see images</h2>
+
+    <p>Before understanding any model, you need to understand what an image actually is to a computer. This is the foundation everything else builds on.</p>
+
+    <h3>Images are just grids of numbers</h3>
+    <p>A digital image is a 3-dimensional array of numbers. For a 224×224 colour image:</p>
+    <ul>
+      <li>Width: 224 pixels</li>
+      <li>Height: 224 pixels</li>
+      <li>Channels: 3 (Red, Green, Blue)</li>
+      <li>Total numbers: 224 × 224 × 3 = <strong>150,528 values</strong></li>
+    </ul>
+    <p>Each number is between 0 and 255. 0 = no intensity, 255 = full intensity. A pure red pixel is [255, 0, 0]. A white pixel is [255, 255, 255]. A black pixel is [0, 0, 0].</p>
+
+    <div class="callout callout-code">
+      A single 224×224 image in PyTorch is a tensor of shape <code>[3, 224, 224]</code> — 3 channels, 224 rows, 224 columns. A batch of 16 images is <code>[16, 3, 224, 224]</code>.
+    </div>
+
+    <h3>Why 224×224?</h3>
+    <p>The Vision Transformer we use (ViT-B/16) was pretrained on ImageNet at 224×224. Using the same size means the pretrained weights apply correctly to our images. All images in our dataset — regardless of original size — are resized to 224×224 before the model sees them.</p>
+
+    <h3>Normalisation — why we do it</h3>
+    <p>Raw pixel values (0–255) are too large and inconsistent for neural networks to work with efficiently. We normalise every image using the mean and standard deviation of the ImageNet dataset:</p>
+    <pre>
+<span class="cm"># ImageNet statistics — computed over 1.2 million images</span>
+mean = [0.485, 0.456, 0.406]  <span class="cm"># mean for R, G, B channels</span>
+std  = [0.229, 0.224, 0.225]  <span class="cm"># std dev for R, G, B channels</span>
+
+<span class="cm"># For each pixel: normalised = (pixel/255 - mean) / std</span>
+<span class="cm"># Result: values centred around 0, typically in range [-2, 2]</span></pre>
+    <p>Why ImageNet stats specifically? Because ViT-B/16 was pretrained on ImageNet. Using the same normalisation means the model's internal representations from pretraining still apply correctly. Using different stats would be like giving the model images it doesn't recognise.</p>
+
+    <h3>The frequency domain — a different way to look at images</h3>
+    <p>You can represent any image in two equivalent ways:</p>
+
+    <div class="analogy">
+      <div class="analogy-side real">
+        <div class="label">Spatial domain (what you see)</div>
+        <p>Pixel values arranged in a grid. Each value tells you the colour at that exact location. This is the normal "picture" view.</p>
+      </div>
+      <div class="analogy-side ai">
+        <div class="label">Frequency domain (FFT view)</div>
+        <p>How fast the pixel values change across the image. Low frequencies = slow changes (backgrounds, broad colours). High frequencies = fast changes (edges, fine textures).</p>
+      </div>
+    </div>
+
+    <p>The <strong>Fast Fourier Transform (FFT)</strong> converts between these two representations mathematically. They contain identical information — just presented differently. The frequency view is useful for ArtLens because:</p>
+
+    <div class="callout callout-insight">
+      <strong>Key insight:</strong> AI generators leave invisible fingerprints in the high-frequency domain. When an AI model upsamples a small feature map to a larger image (a step inside every generator), it creates periodic patterns that appear as regular spikes in the FFT spectrum. Human artists don't create these patterns. The human eye can't see them — but a detector trained on frequency features can.
+    </div>
+
+    <p>We also use the <strong>Discrete Wavelet Transform (DWT)</strong> via PyWavelets. Unlike FFT which analyses the whole image at once, DWT decomposes an image into multiple frequency sub-bands at different scales — giving both frequency and spatial location information simultaneously.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 3: DL basics -->
+  <div class="section" id="dl-basics">
+    <div class="section-num">03 — Deep learning basics</div>
+    <h2>Deep learning from scratch</h2>
+
+    <h3>What is a neural network?</h3>
+    <p>A neural network is a function that maps inputs (images) to outputs (labels) by learning from examples. It's made of layers, each of which transforms the data in some way. The "deep" in deep learning just means many layers stacked together.</p>
+
+    <p>Think of it like this: you want to teach someone to recognise cats. You can't write rules ("ears pointy, fur fluffy"). Instead, you show them 10,000 cats and 10,000 non-cats, and they learn the pattern. Neural networks do exactly this — but with numbers instead of intuition.</p>
+
+    <h3>How learning actually works — the training loop</h3>
+    <ol>
+      <li><strong>Forward pass:</strong> Feed an image through the network, get a prediction (e.g., 73% AI, 27% human)</li>
+      <li><strong>Loss calculation:</strong> Measure how wrong the prediction is. If the image was actually human, the prediction 73% AI is very wrong → high loss</li>
+      <li><strong>Backward pass (backpropagation):</strong> Calculate how much each parameter in the network contributed to the error, using calculus (chain rule)</li>
+      <li><strong>Update parameters:</strong> Nudge each parameter slightly in the direction that reduces the error. This is done by the optimiser (we use AdamW)</li>
+      <li><strong>Repeat:</strong> Do this for thousands of batches across many epochs until the model learns</li>
+    </ol>
+
+    <div class="callout callout-insight">
+      <strong>Analogy:</strong> Imagine tuning a radio. You hear static (high loss), you turn the dial slightly (update parameters), check again. You keep adjusting until you find the station (low loss, good predictions). Backpropagation tells you which direction to turn the dial.
+    </div>
+
+    <h3>Key terms explained</h3>
+    <div class="card-grid">
+      <div class="card accent-red">
+        <div class="card-icon">TERM</div>
+        <h4>Epoch</h4>
+        <p>One complete pass through the entire training dataset. We train for 15 epochs — so the model sees every image 15 times.</p>
+      </div>
+      <div class="card accent-blue">
+        <div class="card-icon">TERM</div>
+        <h4>Batch size</h4>
+        <p>How many images are processed together before updating parameters. We use batch size 16 — limited by our 6GB GPU.</p>
+      </div>
+      <div class="card accent-green">
+        <div class="card-icon">TERM</div>
+        <h4>Learning rate</h4>
+        <p>How large each parameter update step is. Too high = unstable. Too low = slow. We use 2e-5 — very small for fine-tuning.</p>
+      </div>
+      <div class="card accent-teal">
+        <div class="card-icon">TERM</div>
+        <h4>Overfitting</h4>
+        <p>When a model memorises training data but fails on new images. Like a student memorising answers instead of understanding concepts.</p>
+      </div>
+      <div class="card accent-red">
+        <div class="card-icon">TERM</div>
+        <h4>Loss function</h4>
+        <p>The mathematical measure of "how wrong" the model is. We use Cross Entropy Loss — standard for classification tasks.</p>
+      </div>
+      <div class="card accent-blue">
+        <div class="card-icon">TERM</div>
+        <h4>Gradient</h4>
+        <p>The direction and magnitude of the slope of the loss function. Tells us which way to nudge each parameter to reduce loss.</p>
+      </div>
+    </div>
+
+    <h3>What is fine-tuning?</h3>
+    <p>Training a ViT-B/16 from scratch on 30,000 images would be hopeless — it has 86 million parameters and needs millions of images. Instead, we use a model that was already trained on 14 million ImageNet images. It already "knows" what edges, textures, shapes, and objects look like.</p>
+    <p>Fine-tuning means: start from these pretrained weights, then train further on our specific task (AI art detection) with a very small learning rate. We're nudging an expert, not starting from scratch. This is why we get good results with a relatively small dataset.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 4: CNN vs ViT -->
+  <div class="section" id="cnn-vs-vit">
+    <div class="section-num">04 — Architecture</div>
+    <h2>CNNs vs Vision Transformers</h2>
+
+    <h3>How a CNN works</h3>
+    <p>A Convolutional Neural Network slides a small filter (e.g. 3×3 pixels) across the image, computing a weighted sum at each position. This detects local patterns — edges at specific positions. Stack many such layers and the network builds up from simple edges to complex shapes to semantic concepts.</p>
+    <p>CNNs are excellent but have a limitation: they're inherently local. A CNN with a 3×3 filter can only see 3×3 pixels at a time. To understand how the top-left corner relates to the bottom-right, the signal has to propagate through many layers — and information can get diluted.</p>
+
+    <h3>How a Vision Transformer (ViT) works</h3>
+    <p>ViT takes a completely different approach. It slices the image into a grid of non-overlapping patches and treats each patch like a "word" in a sentence. Then it uses the Transformer architecture (originally invented for text) to process all patches simultaneously.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-label">ViT-B/16 — how a 224×224 image is processed</div>
+      <div class="arch-row">
+        <div class="arch-box gray">224×224 image</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box blue">Split into<br>14×14 = 196 patches<br>(each 16×16px)</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box teal">Each patch<br>→ 768-dim vector<br>(patch embedding)</div>
+      </div>
+      <div class="arch-row" style="margin-top:8px">
+        <div class="arch-box teal">196 patch<br>vectors + CLS token</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box blue">12× Transformer<br>Encoder layers<br>(self-attention)</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box green">CLS token<br>768-dim embedding<br>(image representation)</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box red">Classification<br>head → logits</div>
+      </div>
+    </div>
+
+    <h3>Self-attention — the key mechanism</h3>
+    <p>Self-attention is what makes ViT powerful. For each patch, it computes how much that patch should "pay attention" to every other patch. The result is a weighted average of all patches, where the weights reflect relevance.</p>
+    <p>Example: when classifying an AI portrait, the patch covering the hair region might attend strongly to the patches covering the facial features, because ViT has learned that inconsistency between these areas is a telltale AI sign. CNNs can't do this directly — they'd need many layers of local convolutions to build up this long-range relationship.</p>
+
+    <div class="callout callout-insight">
+      <strong>The CLS token:</strong> ViT prepends a special learnable vector (called the class token or CLS token) to the sequence of 196 patch embeddings. After all 12 transformer layers, this CLS token has "attended to" all patches and accumulated a global representation of the image. It's this 768-dimensional CLS token vector that we feed into our classification heads.
+    </div>
+
+    <h3>Why ViT specifically for ArtLens</h3>
+    <div class="card-grid">
+      <div class="card accent-blue">
+        <div class="card-icon">REASON 1</div>
+        <h4>Global context</h4>
+        <p>AI images often have local inconsistencies — textures that look right individually but wrong together. ViT's self-attention catches this because every patch sees every other patch.</p>
+      </div>
+      <div class="card accent-green">
+        <div class="card-icon">REASON 2</div>
+        <h4>Attention rollout</h4>
+        <p>ViT's attention weights give us explainability for free — we can visualise which patches the model focused on. CNNs need GradCAM bolted on separately.</p>
+      </div>
+      <div class="card accent-red">
+        <div class="card-icon">REASON 3</div>
+        <h4>CLIP connection</h4>
+        <p>Ojha et al. (CVPR 2023) proved CLIP-pretrained ViT features naturally separate real from AI art in embedding space better than any CNN architecture.</p>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 5: Model -->
+  <div class="section" id="model">
+    <div class="section-num">05 — Model architecture</div>
+    <h2>ArtLens model — three heads on one backbone</h2>
+
+    <p>ArtLens uses a multi-task learning architecture. One shared ViT-B/16 backbone processes the image, and three separate classification heads make different decisions from the same learned representation.</p>
+
+    <div class="arch-diagram">
+      <div class="arch-label">ArtLens full architecture</div>
+      <div class="arch-row">
+        <div class="arch-box gray">Input image<br>224×224×3</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box blue" style="min-width:160px">ViT-B/16 backbone<br>shared weights<br>→ 768-dim embedding</div>
+      </div>
+      <div class="arch-row" style="margin-top: 12px; gap: 20px">
+        <div style="text-align:center">
+          <div class="arch-box red" style="min-width:140px">Head 1<br>Binary<br>Human / AI</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px">Phase 2</div>
+        </div>
+        <div style="text-align:center">
+          <div class="arch-box teal" style="min-width:140px">Head 2<br>Generator<br>MJ / SD</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px">Phase 3</div>
+        </div>
+        <div style="text-align:center">
+          <div class="arch-box green" style="min-width:140px">Head 3<br>Open-set<br>Known / Unknown</div>
+          <div style="font-size:12px; color:var(--ink3); margin-top:6px">Phase 3</div>
+        </div>
+      </div>
+      <div class="arch-row" style="margin-top:12px">
+        <div class="arch-box blue" style="min-width:200px">ViT embeddings +<br>FFT + Wavelet features<br>concatenated</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box green">LightGBM<br>ensemble layer</div>
+        <span class="arch-arrow">→</span>
+        <div class="arch-box red">Final calibrated<br>prediction + confidence</div>
+      </div>
+    </div>
+
+    <h3>Why three heads instead of three separate models?</h3>
+    <p>Training three separate models would mean three times the computation, three times the VRAM, and three sets of weights to manage. More importantly, the tasks <em>help each other</em>. When Head 2 forces the backbone to learn generator-specific patterns (the subtle fingerprint each generator leaves), those patterns also help Head 1 generalise better. The gradient signals from all three heads flow back into the shared backbone simultaneously, making it learn richer features than any single task would produce.</p>
+
+    <h3>Head 1 — Binary classification</h3>
+    <p>The simplest head. Takes the 768-dim embedding from ViT, applies LayerNorm, Dropout (30%), then a linear layer producing 2 logits — one for Human, one for AI. Softmax converts these to probabilities. Trained in Phase 2 as a standalone baseline before the other heads are added.</p>
+
+    <h3>Head 2 — Generator fingerprinting</h3>
+    <p>Only active on AI images (label=1). Classifies whether the AI image came from Midjourney or Stable Diffusion. Each generator has a characteristic "fingerprint" — subtle patterns in how it renders hair, textures, backgrounds. This head forces the backbone to learn these fingerprints. Output: "Midjourney (87% confident)" or "Stable Diffusion (91% confident)".</p>
+
+    <h3>Head 3 — Open-set detection</h3>
+    <p>This is the research-level contribution. The problem: what if a user uploads an image from DALL-E 3, which the model has never seen during training? A standard classifier would still output "Midjourney" or "Stable Diffusion" — confidently wrong.</p>
+    <p>Our solution uses <strong>Mahalanobis distance</strong>. After training, we compute the centroid (average embedding) and covariance matrix of each known generator's cluster in the 768-dim embedding space. At test time, we measure how far the new image's embedding is from all known clusters. If it's far from all of them, it gets flagged as "unknown generator".</p>
+
+    <div class="callout callout-insight">
+      <strong>Analogy:</strong> Imagine you've memorised the handwriting of 5 people. Someone hands you a new letter. You compare it to each person's style. If it doesn't match any of them closely, you say "I don't know who wrote this" — rather than guessing wrong. That's open-set detection.
+    </div>
+
+    <h3>LightGBM ensemble layer</h3>
+    <p>Parallel to the ViT, we compute handcrafted features from the frequency domain:</p>
+    <ul>
+      <li><strong>FFT statistics:</strong> High-frequency energy ratio, spectral entropy, peak frequencies — AI images have distinctive patterns here</li>
+      <li><strong>DWT coefficients:</strong> Wavelet decomposition across multiple scales — captures texture statistics at different resolutions</li>
+      <li><strong>Local Binary Patterns (LBP):</strong> Describes local texture around each pixel — AI art has unnaturally uniform micro-texture</li>
+    </ul>
+    <p>These handcrafted features are concatenated with the 768-dim ViT embedding and fed into LightGBM — a fast, interpretable gradient boosting classifier. If the deep model is fooled by a visually convincing image, the frequency branch may still catch the upsampling artifacts. The two branches act as independent checks on each other.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 6: Dataset -->
+  <div class="section" id="dataset">
+    <div class="section-num">06 — Dataset design</div>
+    <h2>Why dataset design is 80% of the work</h2>
+
+    <p>The most common mistake in ML projects is treating the dataset as an afterthought. Every architectural decision we made in the model was motivated by dataset properties. Here's why every choice was made.</p>
+
+    <h3>Why not use simple photos as the "human" class?</h3>
+    <p>AI generators are trained to produce <em>art</em>, not photographs. A model trained to distinguish photos from AI art would learn "photos = real, paintings = fake" — which is completely wrong. ArtLens needs to work on art images. So our human class is WikiArt — 96,000 images of human-made paintings across 14 art styles.</p>
+
+    <h3>Stratified sampling — why random isn't good enough</h3>
+    <p>WikiArt is heavily imbalanced: Abstract, Portrait, and Landscape have ~15,000 images each. Marina, Animal Painting, and Flower Painting have ~1,800 each. If we randomly sample 15,000 images, we'd get ~4,000 abstracts and almost no marinas. The model would learn "abstract brushwork = human art" and fail on portrait paintings.</p>
+
+    <p>Stratified sampling fixes this: we cap at <code>min(equal_quota, smallest_category) ≈ 1,071 per category</code> and sample exactly that many from each style. Result: every art style contributes equally. Gini coefficient ≈ 0.00 (perfect balance).</p>
+
+    <h3>The train / val / test split</h3>
+    <div class="analogy">
+      <div class="analogy-side real">
+        <div class="label">75% — Training set</div>
+        <p>What the model learns from. These images are seen repeatedly across all epochs. Never used for evaluation.</p>
+      </div>
+      <div class="analogy-side ai">
+        <div class="label">15% — Validation set</div>
+        <p>Used during training to track progress and detect overfitting. Not used to update weights — only to measure performance.</p>
+      </div>
+    </div>
+    <div class="callout callout-insight" style="margin-top:0">
+      <strong>10% — Test set (held out completely)</strong> — The model never sees this data until final evaluation after all training decisions are made. This gives us an honest measure of real-world performance. If you evaluate on test data during training, you leak information and fool yourself.
+    </div>
+
+    <p>We stratify splits on <code>source</code> (not just label) — ensuring each split contains proportional WikiArt, Midjourney, and SD images. This prevents the pathological case where all Midjourney images end up in only the training set.</p>
+
+    <h3>Deduplication — two levels</h3>
+    <p><strong>Within-class:</strong> pHash (perceptual hashing) finds near-identical images even if slightly resized or re-saved. We keep only one copy per unique pHash.</p>
+    <p><strong>Cross-class:</strong> If the same image appears in both the human and AI sets (rare but catastrophic — the model sees the same image with two different labels), it gets removed from the AI set. This is the most important data quality check.</p>
+
+    <h3>The CIFAKE trap</h3>
+    <div class="callout callout-paper">
+      <strong>Important warning:</strong> Many student projects use CIFAKE — a dataset of CIFAR-10 images vs Stable Diffusion v1.4 images. It gives 99%+ accuracy and looks impressive. But SD v1.4 is easy to fingerprint, and the model learns that specific generator's artifacts — not a general "AI art" concept. Interviewers and reviewers will call this out immediately. We deliberately avoid CIFAKE and use JourneyDB (Midjourney v5) and DiffusionDB (Stable Diffusion) instead.
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 7: Training -->
+  <div class="section" id="training">
+    <div class="section-num">07 — Training</div>
+    <h2>What actually happens during training</h2>
+
+    <h3>fp16 mixed precision — fitting into 6GB VRAM</h3>
+    <p>Your RTX 3050 has 6GB VRAM. ViT-B/16 in full 32-bit precision (fp32) needs ~4GB just for weights. Add gradients (~4GB), activations (~3GB), and optimizer state (~8GB) and you're at ~19GB — way over budget.</p>
+    <p>Mixed precision (fp16) stores most values in 16-bit floats (half the memory). PyTorch's <code>autocast</code> automatically determines which operations are safe in fp16 and which need to stay in fp32. Combined with <code>GradScaler</code> (which prevents small fp16 gradients from becoming exactly zero), this brings VRAM usage down to ~4GB — fitting on your GPU.</p>
+
+    <h3>Gradient checkpointing — the other memory trick</h3>
+    <p>During the backward pass, PyTorch needs the activations from every layer to compute gradients. For a 12-layer transformer, storing all these activations takes huge VRAM. Gradient checkpointing says: don't store intermediate activations — just recompute them during the backward pass when needed. This costs ~20% more computation but reduces activation memory by ~60%. One line: <code>model.backbone.set_grad_checkpointing(enable=True)</code>.</p>
+
+    <h3>AdamW optimiser and cosine annealing</h3>
+    <p>We use <strong>AdamW</strong> — Adam with decoupled weight decay. Adam adapts the learning rate per-parameter based on gradient history (faster learning for rarely-updated parameters). The weight decay (L2 regularisation, <code>1e-4</code>) prevents weights from growing too large and overfitting.</p>
+    <p><strong>Cosine annealing</strong> gradually reduces the learning rate from 2e-5 to 1e-7 following a cosine curve. This lets the model make larger updates early (exploring the loss landscape) and smaller, more precise updates later (settling into a good minimum). Fixed learning rates are generally worse.</p>
+
+    <h3>The Wang 2020 augmentation strategy</h3>
+    <p>This is the single most important augmentation decision for generalization. From CNNSpot (Wang et al., CVPR 2020): applying random JPEG compression (quality 50–95) and Gaussian blur to training images dramatically improves the model's ability to detect AI images that have been post-processed.</p>
+    <p>The reason: when a user uploads an image to Twitter, it gets JPEG-compressed automatically. The high-frequency artifacts that make AI images detectable get partially suppressed. A model trained without this augmentation will fail on compressed images. Training with it forces the model to find more robust, lower-frequency signals instead.</p>
+
+    <pre>
+<span class="cm"># Wang 2020 augmentation — applied with 50% probability</span>
+A.OneOf([
+    A.<span class="fn">ImageCompression</span>(
+        quality_lower=<span class="nm">50</span>,
+        quality_upper=<span class="nm">95</span>   <span class="cm"># random JPEG quality</span>
+    ),
+    A.<span class="fn">GaussianBlur</span>(blur_limit=(<span class="nm">3</span>, <span class="nm">7</span>))  <span class="cm"># random blur kernel</span>
+], p=<span class="nm">0.5</span>)</pre>
+
+    <h3>Evaluation metrics — why not just accuracy?</h3>
+    <div class="card-grid">
+      <div class="card accent-blue">
+        <div class="card-icon">METRIC</div>
+        <h4>AUROC</h4>
+        <p>Area Under ROC Curve. Measures how well the model ranks AI images above human images across all confidence thresholds. 0.5 = random, 1.0 = perfect. Threshold-independent — the most honest single metric.</p>
+      </div>
+      <div class="card accent-green">
+        <div class="card-icon">METRIC</div>
+        <h4>F1 Score</h4>
+        <p>Harmonic mean of precision and recall. Accounts for both false positives (calling human art AI) and false negatives (missing AI art). Better than accuracy when classes are imbalanced.</p>
+      </div>
+      <div class="card accent-red">
+        <div class="card-icon">METRIC</div>
+        <h4>Per-source accuracy</h4>
+        <p>How accurate on WikiArt specifically? On Midjourney? On SD? Overall accuracy hides bias. A model 99% on WikiArt and 60% on Midjourney is useless in practice. From the Tasnim 2024 benchmark paper.</p>
+      </div>
+      <div class="card accent-teal">
+        <div class="card-icon">METRIC</div>
+        <h4>Confusion matrix</h4>
+        <p>4-cell table: true positives, true negatives, false positives, false negatives. Shows exactly what type of mistakes the model makes. Useful for understanding failure modes before deployment.</p>
+      </div>
+    </div>
+
+    <h3>Label smoothing — preventing overconfidence</h3>
+    <p>With standard cross-entropy loss, the model is trained to output exactly [0, 1] (100% AI) or [1, 0] (100% human). This pushes the model toward extreme confidence, which is bad for calibration — in the real world, some images genuinely are ambiguous.</p>
+    <p>Label smoothing (0.1) softens the targets to [0.05, 0.95] and [0.95, 0.05]. The model can never be 100% confident, which produces better-calibrated probabilities in deployment. This directly links to the uncertainty-aware design from the Scientific Reports 2025 paper.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 8: Explainability -->
+  <div class="section" id="explain">
+    <div class="section-num">08 — Explainability</div>
+    <h2>Why the model thinks what it thinks</h2>
+
+    <p>A detector that says "AI" without explanation is nearly useless in practice. Someone disputing a verdict needs to understand which part of the image gave it away. ArtLens uses three complementary explainability methods.</p>
+
+    <h3>Attention rollout — ViT's native explainability</h3>
+    <p>Each of the 12 transformer layers computes an attention matrix: for each of the 196 patches, how much attention does it pay to every other patch? These matrices are 197×197 (196 patches + 1 CLS token).</p>
+    <p>Attention rollout recursively multiplies these matrices across all 12 layers, tracking how information flows from the input patches through to the CLS token that makes the final decision. The result is a 14×14 heatmap that we upsample to 224×224 and overlay on the original image.</p>
+    <p>Bright regions = patches the model "looked at" most = areas that most influenced the prediction. If the heatmap lights up on the hair (AI generators notoriously struggle with hair) or background textures, you can visually explain the decision.</p>
+
+    <h3>GradCAM++ — gradient-based explanation</h3>
+    <p>GradCAM asks: for the final classification decision, how much did the activations at each spatial location in the last attention layer contribute? It computes the gradient of the class score with respect to the feature maps, uses these gradients to weight the feature maps, and produces a heatmap.</p>
+    <p>GradCAM and attention rollout capture different things. Attention rollout shows what the model "looked at" throughout all 12 layers. GradCAM shows what was most responsible for the final verdict specifically — more targeted, sometimes more revealing.</p>
+
+    <h3>SHAP — explaining the LightGBM branch</h3>
+    <p>SHAP (SHapley Additive exPlanations) comes from cooperative game theory. Imagine the features (FFT statistics, wavelet coefficients) as players in a game, and the prediction as the payout. SHAP computes each feature's fair contribution to the prediction, respecting all possible orderings in which features could have been added.</p>
+    <p>In practice: for each image, SHAP gives you a bar chart showing which frequency features pushed the prediction toward "AI" (positive SHAP value) and which pushed toward "human" (negative). Example output: "High-frequency energy ratio: +0.34 (toward AI), Wavelet detail uniformity: +0.21 (toward AI), LBP variance: -0.08 (toward human)".</p>
+
+    <div class="callout callout-insight">
+      <strong>Why three methods?</strong> Each explains a different part of the model. Attention rollout and GradCAM explain the deep ViT. SHAP explains the classical LightGBM branch. Together they give a complete picture — and showing all three in the UI is a major differentiator from black-box commercial tools.
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 9: Papers -->
+  <div class="section" id="papers">
+    <div class="section-num">09 — Research papers</div>
+    <h2>The 5 papers behind ArtLens</h2>
+
+    <p>Every key architectural decision in ArtLens is grounded in peer-reviewed research. Here's what we take from each paper and where it shows up in the code.</p>
+
+    <div class="paper-card">
+      <div>
+        <span class="paper-badge">CVPR 2023</span>
+        <span class="paper-badge">Ojha et al.</span>
+      </div>
+      <div class="paper-title">Towards Universal Fake Image Detectors that Generalize Across Generative Models</div>
+      <div class="paper-desc">Found that standard classifiers fail on unseen generators because they latch onto generator-specific artifacts. Proposed using frozen CLIP-ViT features — which weren't trained for this task — and showed they naturally separate real from AI images better than dedicated detectors. +15 mAP improvement on unseen generators.</div>
+      <div class="paper-borrow">↳ Justifies our ViT backbone choice. Motivates the UMAP embedding visualization. Frames the open-set detection problem (Head 3).</div>
+    </div>
+
+    <div class="paper-card">
+      <div>
+        <span class="paper-badge">CVPR 2020</span>
+        <span class="paper-badge">Wang et al.</span>
+      </div>
+      <div class="paper-title">CNN-Generated Images Are Surprisingly Easy to Spot... For Now (CNNSpot)</div>
+      <div class="paper-desc">The foundational paper. Showed a ResNet-50 trained on ProGAN generalizes to other generators. Key finding: JPEG compression and Gaussian blur augmentation is essential — without it, detectors fail on post-processed images.</div>
+      <div class="paper-borrow">↳ Our augmentation strategy directly copied from this paper. JPEG quality 50–95 + GaussianBlur at p=0.5 in the training transforms.</div>
+    </div>
+
+    <div class="paper-card">
+      <div>
+        <span class="paper-badge">arXiv 2024</span>
+        <span class="paper-badge">Tasnim et al.</span>
+      </div>
+      <div class="paper-title">AI-Generated Image Detection: An Empirical Study and Future Research Directions (arXiv:2511.02791)</div>
+      <div class="paper-desc">Benchmarks 10 state-of-the-art methods across 7 datasets. Identifies three critical gaps: non-standardized benchmarks, inconsistent training protocols, limited evaluation metrics. Demonstrates strong in-distribution but degraded cross-generator performance across all methods.</div>
+      <div class="paper-borrow">↳ Our evaluation protocol: AUROC + F1 + per-source accuracy breakdown. This is why we report accuracy separately for WikiArt, Midjourney, and SD rather than just overall accuracy.</div>
+    </div>
+
+    <div class="paper-card">
+      <div>
+        <span class="paper-badge">arXiv 2025</span>
+        <span class="paper-badge">Mahara & Rishe</span>
+      </div>
+      <div class="paper-title">Methods and Trends in Detecting AI-Generated Images (arXiv:2502.15176)</div>
+      <div class="paper-desc">Comprehensive survey covering FatFormer — a CLIP-based detector combining image and frequency domain features via Discrete Wavelet Transform inside a ViT architecture. Also covers GradCAM-based explainability across multiple methods.</div>
+      <div class="paper-borrow">↳ Validates our dual-branch architecture (ViT + frequency features). FatFormer's DWT approach directly inspired our frequency branch. Used as literature review foundation.</div>
+    </div>
+
+    <div class="paper-card">
+      <div>
+        <span class="paper-badge">Scientific Reports 2025</span>
+      </div>
+      <div class="paper-title">Detection of AI Generated Images Using Combined Uncertainty Measures and Particle Swarm Optimised Rejection Mechanism</div>
+      <div class="paper-desc">Proposes outputting "uncertain" instead of a confident wrong label when prediction confidence is low, using Monte Carlo Dropout entropy and Gaussian Process variance. Trained on SD, tested on Midjourney, BigGAN, StyleGAN3 — significant distribution shifts.</div>
+      <div class="paper-borrow">↳ Justifies our confidence calibration layer (Platt scaling + temperature scaling) in Phase 6. The "reject when uncertain" philosophy is implemented in our open-set head and UI confidence display.</div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 10: Deploy -->
+  <div class="section" id="deploy">
+    <div class="section-num">10 — Deployment</div>
+    <h2>Free deployment — permanently live on the internet</h2>
+
+    <p>ArtLens will be deployed at zero cost with a permanent public URL. Here is how each component works and why it was chosen.</p>
+
+    <table>
+      <thead>
+        <tr><th>Layer</th><th>Tool</th><th>Role</th><th>Why free</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>Model storage</td><td>HuggingFace Hub</td><td>Stores trained weights (like GitHub for models)</td><td>50GB free storage</td></tr>
+        <tr><td>Model inference</td><td>HuggingFace Spaces (ZeroGPU)</td><td>FastAPI server — runs ViT inference on shared A100</td><td>ZeroGPU program for public ML projects</td></tr>
+        <tr><td>Frontend</td><td>React + Tailwind on Vercel</td><td>The website users interact with</td><td>100GB/month free bandwidth</td></tr>
+        <tr><td>Database</td><td>Supabase</td><td>Logs predictions, community flags, hard negatives</td><td>500MB free PostgreSQL</td></tr>
+        <tr><td>Experiment tracking</td><td>Weights & Biases</td><td>Loss curves, metric dashboards during training</td><td>Unlimited free for personal projects</td></tr>
+        <tr><td>Training (local)</td><td>RTX 3050 + Colab</td><td>Fine-tuning ViT-B/16 — never on Spaces</td><td>Your own GPU + Kaggle T4 backup</td></tr>
+      </tbody>
+    </table>
+
+    <h3>The community feedback loop</h3>
+    <p>When a user disputes a verdict ("I made this, it's real art"), that image is flagged in Supabase. These disputed images become hard negatives — images where the model made a wrong, confident prediction. They automatically queue for the next retraining cycle. The system gets harder to fool over time without any manual data collection.</p>
+
+    <h3>The batch API</h3>
+    <p>Developers can POST up to 20 images and receive JSON back with: binary label, confidence score, generator guess, and a URL to the attention heatmap. Rate-limited, free tier. This makes ArtLens a tool other developers can integrate, not just a demo website.</p>
+  </div>
+
+  <hr class="divider">
+
+  <!-- Section 11: Phases -->
+  <div class="section" id="phases">
+    <div class="section-num">11 — Build roadmap</div>
+    <h2>Phase-by-phase build order</h2>
+
+    <div class="timeline">
+      <div class="tl-item">
+        <div class="tl-dot done">1</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 1 — Dataset pipeline ✅</div>
+          <div class="tl-desc">WikiArt stratified sampling (14 categories, ~1,071 each), JourneyDB + DiffusionDB download, corruption check, pHash deduplication, cross-class dedup, 50/50 balance, manifest CSV.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot active">2</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 2 — Binary baseline ⬅ current</div>
+          <div class="tl-desc">Preprocessing + augmentation (Wang 2020), PyTorch Dataset + DataLoader, ViT-B/16 Head 1 only, fp16 training loop, AUROC + F1 + per-source evaluation, W&B logging.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot todo">3</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 3 — Multi-task heads</div>
+          <div class="tl-desc">Add Head 2 (generator fingerprinting: MJ vs SD) and Head 3 (open-set via Mahalanobis distance). Multi-task loss weighting. Load Phase 2 best weights as starting point.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot todo">4</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 4 — Frequency features + LightGBM</div>
+          <div class="tl-desc">Extract FFT statistics, DWT coefficients, LBP histograms. Cache ViT embeddings. Train LightGBM ensemble on concatenated features. Ablation study: deep-only vs frequency-only vs combined.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot todo">5</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 5 — Explainability</div>
+          <div class="tl-desc">Attention rollout implementation, GradCAM++ via pytorch-grad-cam, SHAP on LightGBM branch. Heatmap overlays. Side-by-side comparison visualization.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot todo">6</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 6 — FastAPI backend + HuggingFace Spaces</div>
+          <div class="tl-desc">FastAPI inference server, model loading from HF Hub, /predict endpoint, /batch endpoint, confidence calibration (Platt scaling + temperature scaling), push to HF Spaces ZeroGPU.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot todo">7</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 7 — React frontend + Vercel</div>
+          <div class="tl-desc">Drag-and-drop upload, prediction results with heatmap overlay, generator verdict, confidence bar, community flag button, Supabase integration. Deploy to Vercel.</div>
+        </div>
+      </div>
+      <div class="tl-item">
+        <div class="tl-dot todo">8</div>
+        <div class="tl-body">
+          <div class="tl-title">Phase 8 — Ablation + final report</div>
+          <div class="tl-desc">Cross-generator generalization test (train on SD, test on MJ). Temporal analysis. Ablation study table. Final project report and README. Resume bullet finalized.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider">
+
+  <div style="text-align:center; padding: 1rem 0 2rem; color: var(--ink3); font-size: 13px;">
+    <p>ArtLens — built by Rishi | Last updated: Phase 2 in progress</p>
+    <p style="margin-top:6px; font-family: var(--mono); font-size:11px;">ViT-B/16 · LightGBM · FastAPI · React · HuggingFace Spaces · Vercel</p>
+  </div>
+
+  <a href="#" class="back-top">↑ Back to top</a>
+
+</div>
+
+<script>
+  window.addEventListener('scroll', () => {
+    const el = document.getElementById('prog');
+    const h  = document.documentElement;
+    const pct = (h.scrollTop / (h.scrollHeight - h.clientHeight)) * 100;
+    el.style.width = pct + '%';
+  });
+</script>
+</body>
+</html>

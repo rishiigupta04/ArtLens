@@ -1,0 +1,41 @@
+[project]
+name = "artlens"
+version = "0.1.0"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "albumentations>=2.0.8",
+    "fastapi>=0.135.3",
+    "grad-cam>=1.5.5",
+    "huggingface-hub>=1.10.1",
+    "imagehash>=4.3.2",
+    "lightgbm>=4.6.0",
+    "matplotlib>=3.10.8",
+    "opencv-python-headless>=4.13.0.92",
+    "pandas>=3.0.2",
+    "pillow>=12.1.1",
+    "scikit-image>=0.26.0",
+    "scikit-learn>=1.8.0",
+    "shap>=0.51.0",
+    "timm>=1.0.26",
+    "torch>=2.5.1",
+    "torchvision>=0.20.1",
+    "tqdm>=4.67.3",
+    "umap-learn>=0.5.12",
+    "uvicorn>=0.44.0",
+    "wandb>=0.25.1",
+]
+
+[[tool.uv.index]]
+url = "https://pypi.org/simple"
+name = "pypi"
+default = true
+
+[[tool.uv.index]]
+url = "https://download.pytorch.org/whl/cu121"
+name = "pytorch-cu121"
+explicit = true
+default = true
+
+[tool.uv.sources]
+torch = { index = "pytorch-cu121" }
+torchvision = { index = "pytorch-cu121" }
